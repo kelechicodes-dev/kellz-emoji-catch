@@ -1,0 +1,796 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Emoji Catch</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --bg1: #6a3093;
+    --bg2: #a044ff;
+    --text: #ffffff;
+    --pillBg: rgba(255,255,255,0.15);
+    --pillBorder: rgba(255,255,255,0.25);
+    --overlayBg: rgba(20, 10, 40, 0.88);
+    --btnBg: #ffd166;
+    --btnText: #3a1c71;
+    --subtle: rgba(255,255,255,0.75);
+    --musicBtnBg: rgba(255,255,255,0.15);
+    --musicBtnBorder: rgba(255,255,255,0.35);
+  }
+
+  body.light {
+    --bg1: #fef6e4;
+    --bg2: #f9d5b0;
+    --text: #3a1c40;
+    --pillBg: rgba(58,28,64,0.08);
+    --pillBorder: rgba(58,28,64,0.15);
+    --overlayBg: rgba(255, 248, 235, 0.92);
+    --btnBg: #a044ff;
+    --btnText: #ffffff;
+    --subtle: rgba(58,28,64,0.65);
+    --musicBtnBg: rgba(58,28,64,0.08);
+    --musicBtnBorder: rgba(58,28,64,0.2);
+  }
+
+  body {
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    background: linear-gradient(135deg, var(--bg1), var(--bg2));
+    height: 100vh;
+    overflow: hidden;
+    position: relative;
+    touch-action: none;
+    transition: background 0.4s ease;
+  }
+
+  #game {
+    position: relative;
+    width: 100%;
+    height: 100vh;
+    overflow: hidden;
+    cursor: crosshair;
+  }
+
+  .hud {
+    position: absolute;
+    top: 16px;
+    left: 16px;
+    right: 16px;
+    display: flex;
+    justify-content: space-between;
+    z-index: 10;
+    color: var(--text);
+    font-weight: 700;
+    font-size: 22px;
+    text-shadow: 0 2px 6px rgba(0,0,0,0.2);
+    pointer-events: none;
+  }
+
+  .pill {
+    background: var(--pillBg);
+    backdrop-filter: blur(6px);
+    padding: 8px 18px;
+    border-radius: 999px;
+    border: 1px solid var(--pillBorder);
+  }
+
+  .life { color: #ff5c7a; }
+
+  .emoji {
+    position: absolute;
+    font-size: 44px;
+    user-select: none;
+    cursor: pointer;
+    filter: drop-shadow(0 4px 6px rgba(0,0,0,0.25));
+    transition: transform 0.1s ease;
+    will-change: transform;
+  }
+
+  .emoji:active { transform: scale(0.8); }
+
+  .pop { animation: pop 0.35s forwards; pointer-events: none; }
+  @keyframes pop { to { transform: scale(1.8); opacity: 0; } }
+
+  .floater {
+    position: absolute;
+    font-weight: 800;
+    font-size: 22px;
+    color: #fff59d;
+    pointer-events: none;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.4);
+    animation: floatUp 0.8s forwards;
+  }
+
+  @keyframes floatUp {
+    from { opacity: 1; transform: translateY(0); }
+    to { opacity: 0; transform: translateY(-50px); }
+  }
+
+  #overlay {
+    position: absolute;
+    inset: 0;
+    background: var(--overlayBg);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: var(--text);
+    text-align: center;
+    z-index: 20;
+    padding: 20px;
+    transition: background 0.4s ease;
+  }
+
+  #overlay h1 { font-size: 44px; margin-bottom: 2px; }
+
+  .credit {
+    font-size: 13px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    opacity: 0.6;
+    margin-bottom: 14px;
+    font-weight: 600;
+  }
+
+  #overlay p {
+    font-size: 18px;
+    opacity: 0.85;
+    margin-bottom: 22px;
+    max-width: 320px;
+    line-height: 1.5;
+  }
+
+  #finalScore {
+    font-size: 60px;
+    font-weight: 800;
+    margin-bottom: 6px;
+    color: #ffd166;
+  }
+
+  button {
+    background: var(--btnBg);
+    color: var(--btnText);
+    border: none;
+    padding: 14px 36px;
+    font-size: 18px;
+    font-weight: 700;
+    border-radius: 999px;
+    cursor: pointer;
+    box-shadow: 0 6px 20px rgba(0,0,0,0.25);
+    transition: transform 0.15s ease, background 0.3s ease, color 0.3s ease;
+  }
+
+  button:hover { transform: translateY(-2px) scale(1.03); }
+  button:active { transform: scale(0.97); }
+
+  .hidden { display: none !important; }
+
+  #best {
+    margin-top: 14px;
+    font-size: 14px;
+    opacity: 0.7;
+  }
+
+  .musicBlock {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 22px;
+    width: 100%;
+  }
+
+  .trackRow {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .musicBtn {
+    background: var(--musicBtnBg);
+    color: var(--text);
+    border: 1px solid var(--musicBtnBorder);
+    padding: 9px 18px;
+    font-size: 14px;
+    font-weight: 600;
+    border-radius: 999px;
+    cursor: pointer;
+    box-shadow: none;
+  }
+
+  .musicBtn:hover { transform: none; filter: brightness(1.1); }
+
+  .musicBtn.active {
+    background: var(--btnBg);
+    color: var(--btnText);
+    border-color: transparent;
+  }
+
+  #songName {
+    font-size: 13px;
+    opacity: 0.75;
+    max-width: 260px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .volumeRow {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    opacity: 0.85;
+  }
+
+  #volumeSlider { width: 120px; }
+
+  #musicToggle {
+    position: absolute;
+    bottom: 16px;
+    right: 16px;
+    z-index: 10;
+    background: var(--musicBtnBg);
+    color: var(--text);
+    border: 1px solid var(--musicBtnBorder);
+    padding: 8px 14px;
+    border-radius: 999px;
+    font-size: 14px;
+    cursor: pointer;
+    box-shadow: none;
+  }
+
+  #themeToggle {
+    position: absolute;
+    top: 16px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 10;
+    background: var(--pillBg);
+    border: 1px solid var(--pillBorder);
+    color: var(--text);
+    padding: 8px 14px;
+    border-radius: 999px;
+    font-size: 13px;
+    cursor: pointer;
+    box-shadow: none;
+    backdrop-filter: blur(6px);
+  }
+
+  #themeToggle:hover { transform: translateX(-50%); filter: brightness(1.1); }
+
+  #pauseBtn {
+    position: absolute;
+    top: 68px;
+    right: 16px;
+    z-index: 15;
+    background: var(--pillBg);
+    border: 1px solid var(--pillBorder);
+    color: var(--text);
+    width: 42px;
+    height: 42px;
+    border-radius: 999px;
+    font-size: 16px;
+    cursor: pointer;
+    box-shadow: none;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  #pauseBtn:hover { transform: none; filter: brightness(1.1); }
+
+  #pauseOverlay {
+    position: absolute;
+    inset: 0;
+    background: var(--overlayBg);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: var(--text);
+    z-index: 25;
+    gap: 18px;
+  }
+
+  #pauseOverlay h2 {
+    font-size: 34px;
+  }
+</style>
+</head>
+<body>
+
+<div id="game">
+  <div class="hud">
+    <div class="pill">Score: <span id="score">0</span></div>
+    <div class="pill life">❤️ <span id="lives">3</span></div>
+  </div>
+
+  <button id="themeToggle">🌙 Dark</button>
+  <button id="pauseBtn" class="hidden">⏸️</button>
+
+  <div id="pauseOverlay" class="hidden">
+    <h2>⏸️ Paused</h2>
+    <button id="resumeBtn">Resume</button>
+  </div>
+
+  <div id="overlay">
+    <h1>🎯 Emoji Catch</h1>
+    <div class="credit">by kellz</div>
+    <p>Tap the falling emojis before they hit the ground. Miss 3 and it's game over. Gets faster the longer you survive!</p>
+
+    <div class="musicBlock">
+      <div class="trackRow" id="trackRow">
+        <button class="musicBtn" data-track="none">🔇 No Music</button>
+        <button class="musicBtn" data-track="chill">🌊 Chill</button>
+        <button class="musicBtn" data-track="arcade">🕹️ Arcade</button>
+        <button class="musicBtn" data-track="retro">👾 8-bit</button>
+        <button class="musicBtn" id="pickSongBtn">📁 My Own Song</button>
+      </div>
+      <div id="songName">No music selected</div>
+      <div class="volumeRow">
+        🔉 <input type="range" id="volumeSlider" min="0" max="100" value="50" />
+      </div>
+      <input type="file" id="songInput" accept="audio/*" class="hidden" />
+    </div>
+
+    <button id="startBtn">Start Game</button>
+    <div id="best"></div>
+  </div>
+
+  <button id="musicToggle" class="hidden">⏸️ Pause Music</button>
+  <audio id="bgMusic" loop></audio>
+</div>
+
+<script>
+  const game = document.getElementById('game');
+  const overlay = document.getElementById('overlay');
+  const scoreEl = document.getElementById('score');
+  const livesEl = document.getElementById('lives');
+  const startBtn = document.getElementById('startBtn');
+  const bestEl = document.getElementById('best');
+  const themeToggle = document.getElementById('themeToggle');
+
+  const EMOJIS = ['🍕','🍩','🎈','⭐','🍉','🎉','🍦','🦄','🍓','⚽','🎵','🍀'];
+  const BAD = ['💣','☠️'];
+
+  let score = 0;
+  let lives = 3;
+  let spawnInterval;
+  let fallSpeed = 3200;
+  let running = false;
+  let paused = false;
+  let activeAnims = [];
+  let bestScore = Number(localStorage.getItem('emojiCatchBest') || 0);
+
+  bestEl.textContent = bestScore > 0 ? `Best score: ${bestScore}` : '';
+
+  // ---------- Theme ----------
+  function applyTheme(mode) {
+    if (mode === 'light') {
+      document.body.classList.add('light');
+      themeToggle.textContent = '☀️ Light';
+    } else {
+      document.body.classList.remove('light');
+      themeToggle.textContent = '🌙 Dark';
+    }
+    localStorage.setItem('emojiCatchTheme', mode);
+  }
+
+  const savedTheme = localStorage.getItem('emojiCatchTheme') || 'dark';
+  applyTheme(savedTheme);
+
+  themeToggle.addEventListener('click', () => {
+    const isLight = document.body.classList.contains('light');
+    applyTheme(isLight ? 'dark' : 'light');
+  });
+
+  // ---------- Music: file upload ----------
+  const bgMusic = document.getElementById('bgMusic');
+  const pickSongBtn = document.getElementById('pickSongBtn');
+  const songInput = document.getElementById('songInput');
+  const songNameEl = document.getElementById('songName');
+  const volumeSlider = document.getElementById('volumeSlider');
+  const musicToggle = document.getElementById('musicToggle');
+  const trackRow = document.getElementById('trackRow');
+
+  bgMusic.volume = 0.5;
+  let currentTrack = 'none'; // 'none' | 'chill' | 'arcade' | 'retro' | 'custom'
+
+  pickSongBtn.addEventListener('click', () => songInput.click());
+
+  songInput.addEventListener('change', () => {
+    const file = songInput.files[0];
+    if (!file) return;
+    stopBuiltInMusic();
+    const url = URL.createObjectURL(file);
+    bgMusic.src = url;
+    songNameEl.textContent = '🎶 ' + file.name;
+    setActiveTrackBtn(null);
+    currentTrack = 'custom';
+  });
+
+  volumeSlider.addEventListener('input', () => {
+    const v = volumeSlider.value / 100;
+    bgMusic.volume = v;
+    if (musicGain) musicGain.gain.value = v * 0.35;
+  });
+
+  function setActiveTrackBtn(btn) {
+    document.querySelectorAll('.musicBtn[data-track]').forEach(b => b.classList.remove('active'));
+    if (btn) btn.classList.add('active');
+  }
+
+  trackRow.querySelectorAll('.musicBtn[data-track]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const track = btn.dataset.track;
+      currentTrack = track;
+      bgMusic.pause();
+      bgMusic.removeAttribute('src');
+
+      if (track === 'none') {
+        stopBuiltInMusic();
+        songNameEl.textContent = 'No music selected';
+      } else {
+        songNameEl.textContent = {
+          chill: '🌊 Chill (built-in)',
+          arcade: '🕹️ Arcade (built-in)',
+          retro: '👾 8-bit (built-in)'
+        }[track];
+      }
+      setActiveTrackBtn(btn);
+    });
+  });
+
+  musicToggle.addEventListener('click', () => {
+    if (currentTrack === 'custom') {
+      if (bgMusic.paused) { bgMusic.play(); musicToggle.textContent = '⏸️ Pause Music'; }
+      else { bgMusic.pause(); musicToggle.textContent = '▶️ Play Music'; }
+    } else if (currentTrack !== 'none') {
+      if (musicPlaying) { stopBuiltInMusic(); musicToggle.textContent = '▶️ Play Music'; }
+      else { startBuiltInMusic(currentTrack); musicToggle.textContent = '⏸️ Pause Music'; }
+    }
+  });
+
+  // ---------- Built-in procedurally generated music (Web Audio API) ----------
+  // 100% original, generated in-browser — no files, no copyright, works for everyone.
+  let audioCtx = null;
+  let musicGain = null;
+  let musicPlaying = false;
+  let musicTimer = null;
+  let noteIndex = 0;
+
+  function ensureAudioCtx() {
+    if (!audioCtx) {
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      musicGain = audioCtx.createGain();
+      musicGain.gain.value = (volumeSlider.value / 100) * 0.35;
+      musicGain.connect(audioCtx.destination);
+    }
+  }
+
+  const PATTERNS = {
+    chill: { notes: [261.6, 329.6, 392.0, 329.6, 293.7, 349.2, 440.0, 392.0], tempo: 480, wave: 'sine', gap: 0.08 },
+    arcade: { notes: [392, 523.3, 587.3, 523.3, 659.3, 587.3, 523.3, 440], tempo: 220, wave: 'square', gap: 0.02 },
+    retro: { notes: [220, 220, 293.7, 220, 261.6, 293.7, 349.2, 293.7], tempo: 260, wave: 'triangle', gap: 0.03 }
+  };
+
+  function playNote(freq, wave, duration, gap) {
+    if (!audioCtx) return;
+    const osc = audioCtx.createOscillator();
+    const noteGain = audioCtx.createGain();
+    osc.type = wave;
+    osc.frequency.value = freq;
+    noteGain.gain.setValueAtTime(0.9, audioCtx.currentTime);
+    noteGain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+    osc.connect(noteGain);
+    noteGain.connect(musicGain);
+    osc.start();
+    osc.stop(audioCtx.currentTime + duration + gap);
+  }
+
+  function startBuiltInMusic(trackName) {
+    ensureAudioCtx();
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    stopBuiltInMusic();
+    musicPlaying = true;
+    noteIndex = 0;
+    const pattern = PATTERNS[trackName];
+
+    function step() {
+      if (!musicPlaying) return;
+      const freq = pattern.notes[noteIndex % pattern.notes.length];
+      const noteDuration = (pattern.tempo / 1000) * 0.9;
+      playNote(freq, pattern.wave, noteDuration, pattern.gap);
+      noteIndex++;
+      musicTimer = setTimeout(step, pattern.tempo);
+    }
+    step();
+  }
+
+  function stopBuiltInMusic() {
+    musicPlaying = false;
+    if (musicTimer) clearTimeout(musicTimer);
+  }
+
+  function pauseBuiltInMusic() {
+    musicPlaying = false;
+    if (musicTimer) clearTimeout(musicTimer);
+  }
+
+  function resumeBuiltInMusic(trackName) {
+    if (!audioCtx) return;
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    musicPlaying = true;
+    const pattern = PATTERNS[trackName];
+
+    function step() {
+      if (!musicPlaying) return;
+      const freq = pattern.notes[noteIndex % pattern.notes.length];
+      const noteDuration = (pattern.tempo / 1000) * 0.9;
+      playNote(freq, pattern.wave, noteDuration, pattern.gap);
+      noteIndex++;
+      musicTimer = setTimeout(step, pattern.tempo);
+    }
+    step();
+  }
+
+  function randomBetween(min, max) {
+    return Math.random() * (max - min) + min;
+  }
+
+  function spawnEmoji() {
+    const el = document.createElement('div');
+    const isBad = Math.random() < 0.15;
+    const symbol = isBad
+      ? BAD[Math.floor(Math.random() * BAD.length)]
+      : EMOJIS[Math.floor(Math.random() * EMOJIS.length)];
+
+    el.className = 'emoji';
+    el.textContent = symbol;
+    el.dataset.bad = isBad ? '1' : '0';
+
+    const startX = randomBetween(20, window.innerWidth - 60);
+    el.style.left = startX + 'px';
+    el.style.top = '-60px';
+
+    game.appendChild(el);
+
+    const duration = fallSpeed + randomBetween(-400, 400);
+    const anim = el.animate(
+      [
+        { transform: 'translateY(0)' },
+        { transform: `translateY(${window.innerHeight + 100}px)` }
+      ],
+      { duration: Math.max(duration, 1400), easing: 'linear' }
+    );
+    el.__anim = anim;
+    activeAnims.push(anim);
+
+    anim.onfinish = () => {
+      if (el.parentNode) {
+        el.remove();
+        if (el.dataset.bad === '0') loseLife();
+      }
+    };
+
+    el.addEventListener('pointerdown', () => catchEmoji(el, anim, isBad));
+  }
+
+  function catchEmoji(el, anim, isBad) {
+    if (!el.parentNode) return;
+    anim.cancel();
+    const rect = el.getBoundingClientRect();
+
+    if (isBad) {
+      loseLife();
+      flashFloater(rect, '−1 life', '#ff5c7a');
+    } else {
+      score += 10;
+      scoreEl.textContent = score;
+      flashFloater(rect, '+10', '#fff59d');
+    }
+
+    el.classList.add('pop');
+    setTimeout(() => el.remove(), 300);
+  }
+
+  function flashFloater(rect, text, color) {
+    const f = document.createElement('div');
+    f.className = 'floater';
+    f.textContent = text;
+    f.style.color = color;
+    f.style.left = rect.left + 'px';
+    f.style.top = rect.top + 'px';
+    game.appendChild(f);
+    setTimeout(() => f.remove(), 800);
+  }
+
+  function loseLife() {
+    lives -= 1;
+    livesEl.textContent = Math.max(lives, 0);
+    if (lives <= 0) endGame();
+  }
+
+  function increaseDifficulty() {
+    if (fallSpeed > 1400) fallSpeed -= 60;
+  }
+
+  function pauseGame() {
+    if (!running || paused) return;
+    paused = true;
+    clearInterval(spawnInterval);
+    activeAnims.forEach(a => { try { a.pause(); } catch (e) {} });
+
+    if (currentTrack === 'custom' && bgMusic.src) {
+      bgMusic.pause();
+    } else if (currentTrack !== 'none') {
+      pauseBuiltInMusic();
+    }
+
+    document.getElementById('pauseOverlay').classList.remove('hidden');
+  }
+
+  function resumeGame() {
+    if (!running || !paused) return;
+    paused = false;
+    activeAnims = activeAnims.filter(a => a.playState !== 'finished');
+    activeAnims.forEach(a => { try { a.play(); } catch (e) {} });
+
+    if (currentTrack === 'custom' && bgMusic.src) {
+      bgMusic.play().catch(() => {});
+    } else if (currentTrack !== 'none') {
+      resumeBuiltInMusic(currentTrack);
+    }
+
+    spawnInterval = setInterval(() => {
+      if (running && !paused) {
+        spawnEmoji();
+        increaseDifficulty();
+      }
+    }, 700);
+
+    document.getElementById('pauseOverlay').classList.add('hidden');
+  }
+
+  document.getElementById('pauseBtn').addEventListener('click', () => {
+    if (paused) {
+      resumeGame();
+      document.getElementById('pauseBtn').textContent = '⏸️';
+    } else {
+      pauseGame();
+      document.getElementById('pauseBtn').textContent = '▶️';
+    }
+  });
+  document.getElementById('resumeBtn').addEventListener('click', () => {
+    resumeGame();
+    document.getElementById('pauseBtn').textContent = '⏸️';
+  });
+
+  function startGame() {
+    score = 0;
+    lives = 3;
+    fallSpeed = 3200;
+    scoreEl.textContent = score;
+    livesEl.textContent = lives;
+    overlay.classList.add('hidden');
+    running = true;
+    paused = false;
+    activeAnims = [];
+    document.getElementById('pauseBtn').classList.remove('hidden');
+    document.getElementById('pauseOverlay').classList.add('hidden');
+
+    document.querySelectorAll('.emoji').forEach(e => e.remove());
+
+    if (currentTrack === 'custom' && bgMusic.src) {
+      bgMusic.currentTime = 0;
+      bgMusic.play().catch(() => {});
+      musicToggle.classList.remove('hidden');
+      musicToggle.textContent = '⏸️ Pause Music';
+    } else if (currentTrack !== 'none') {
+      startBuiltInMusic(currentTrack);
+      musicToggle.classList.remove('hidden');
+      musicToggle.textContent = '⏸️ Pause Music';
+    } else {
+      musicToggle.classList.add('hidden');
+    }
+
+    spawnInterval = setInterval(() => {
+      if (running && !paused) {
+        spawnEmoji();
+        increaseDifficulty();
+      }
+    }, 700);
+  }
+
+  function endGame() {
+    running = false;
+    paused = false;
+    clearInterval(spawnInterval);
+    document.querySelectorAll('.emoji').forEach(e => e.remove());
+    activeAnims = [];
+
+    document.getElementById('pauseBtn').classList.add('hidden');
+    document.getElementById('pauseOverlay').classList.add('hidden');
+
+    bgMusic.pause();
+    stopBuiltInMusic();
+    musicToggle.classList.add('hidden');
+
+    if (score > bestScore) {
+      bestScore = score;
+      localStorage.setItem('emojiCatchBest', bestScore);
+    }
+
+    overlay.innerHTML = `
+      <h1>Game Over</h1>
+      <div class="credit">by kellz</div>
+      <div id="finalScore">${score}</div>
+      <p>Points scored. Bombs cost lives — watch out for 💣 and ☠️ next time!</p>
+
+      <div class="musicBlock">
+        <div class="trackRow" id="trackRow">
+          <button class="musicBtn" data-track="none">🔇 No Music</button>
+          <button class="musicBtn" data-track="chill">🌊 Chill</button>
+          <button class="musicBtn" data-track="arcade">🕹️ Arcade</button>
+          <button class="musicBtn" data-track="retro">👾 8-bit</button>
+          <button class="musicBtn" id="pickSongBtn">📁 My Own Song</button>
+        </div>
+        <div id="songName">${songNameEl.textContent}</div>
+        <div class="volumeRow">
+          🔉 <input type="range" id="volumeSlider" min="0" max="100" value="${volumeSlider.value}" />
+        </div>
+      </div>
+
+      <button id="startBtn">Play Again</button>
+      <div id="best">Best score: ${bestScore}</div>
+    `;
+    overlay.classList.remove('hidden');
+
+    // Rebind references and events after innerHTML replace
+    const newTrackRow = document.getElementById('trackRow');
+    const newPickSongBtn = document.getElementById('pickSongBtn');
+    const newVolumeSlider = document.getElementById('volumeSlider');
+
+    document.getElementById('startBtn').addEventListener('click', startGame);
+    newPickSongBtn.addEventListener('click', () => songInput.click());
+    newVolumeSlider.addEventListener('input', (e) => {
+      const v = e.target.value / 100;
+      bgMusic.volume = v;
+      if (musicGain) musicGain.gain.value = v * 0.35;
+    });
+    newTrackRow.querySelectorAll('.musicBtn[data-track]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const track = btn.dataset.track;
+        currentTrack = track;
+        bgMusic.pause();
+        bgMusic.removeAttribute('src');
+        if (track === 'none') {
+          stopBuiltInMusic();
+          document.getElementById('songName').textContent = 'No music selected';
+        } else {
+          document.getElementById('songName').textContent = {
+            chill: '🌊 Chill (built-in)',
+            arcade: '🕹️ Arcade (built-in)',
+            retro: '👾 8-bit (built-in)'
+          }[track];
+        }
+        newTrackRow.querySelectorAll('.musicBtn[data-track]').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+      });
+    });
+
+    // mark currently active track button
+    const activeBtn = newTrackRow.querySelector(`[data-track="${currentTrack}"]`);
+    if (activeBtn) activeBtn.classList.add('active');
+  }
+
+  startBtn.addEventListener('click', startGame);
+</script>
+
+</body>
+</html>
